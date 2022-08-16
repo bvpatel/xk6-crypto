@@ -46,5 +46,5 @@ Then:
 
 2. Build the binary:
   ```bash
-  $ xk6 build --with github.com/minhhoangvn/xk6-crypto@latest
+  $ xk6 build --with github.com/bvpatel/xk6-crypto@latest
   ```
