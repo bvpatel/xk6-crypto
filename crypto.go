@@ -33,6 +33,7 @@ import ( // nolint:gci
 	"crypto/sha512"
 	"crypto/x509"
 	"encoding/base64"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"hash"
@@ -215,7 +216,7 @@ func (c *Crypto) RsaPublicEncryptWithPublicKey(ctx context.Context, publicKey st
 	if err != nil {
 		return "", fmt.Errorf("error in convert base64 public key string to rsa.PublicKey %s", err)
 	}
-
+	encryptDataByte := []byte(encryptData)
 	ciphertext, err := rsa.EncryptPKCS1v15(rand.Reader, publicKeyRSA, encryptDataByte)
 
 	if err != nil {
@@ -231,7 +232,7 @@ func (c *Crypto) RsaPublicEncryptWithBase64PublicKey(ctx context.Context, public
 		return "", fmt.Errorf("error in decode base64 public key string to pem string %s", err)
 	}
 
-	return RsaPublicEncryptWithPublicKey(ctx, b, encryptData)
+	return c.RsaPublicEncryptWithPublicKey(ctx, string(b), encryptData)
 }
 
 func (c *Crypto) RsaEncryptOAEP(ctx context.Context, publicKey string, encryptData string, hash string) (string, error) {
@@ -287,32 +288,20 @@ func publicKeyFrom(key []byte) (*rsa.PublicKey, error) {
 	return pub, nil
 }
 
-func parseRSAPublicKey(pemDecodedBlock []byte) *rsa.PublicKey {
+func parseRSAPublicKey(pemDecodedBlock []byte) (*rsa.PublicKey, error) {
 	key, err := x509.ParsePKCS1PublicKey(pemDecodedBlock)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
-	return key
+	return key, nil
 }
 
-func parsePublicKeyToRsa(pemDecodedBlock []byte) *rsa.PublicKey {
-	keyInstance, err := x509.ParsePKIXPublicKey(pemDecodedBlock)
-	if err != nil {
-		log.Fatal(err)
-	}
-	key, ok := keyInstance.(*rsa.PublicKey)
-	if !ok {
-		log.Fatal("failed to key rsa")
-	}
-	return key
-}
-
-func loadPublicKey(publicKey string) *rsa.PublicKey {
+func loadPublicKey(publicKey string) (*rsa.PublicKey, error) {
 	isRSAPublicKey := strings.Contains(publicKey, "RSA")
 	block, _ := pem.Decode([]byte(publicKey))
 	if isRSAPublicKey {
 		return parseRSAPublicKey(block.Bytes)
 	} else {
-		return parsePublicKeyToRsa(block.Bytes)
+		return publicKeyFrom(block.Bytes)
 	}
 }
